@@ -1,0 +1,35 @@
+name: Assemble hotfix core files
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "grok-parts/hotfix-ink.part*"
+      - "grok-parts/hotfix-wc.part*"
+      - "grok-parts/hotfix-ui.part*"
+      - ".github/workflows/assemble-hotfix.yml"
+permissions:
+  contents: write
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Concatenate parts into game core
+        run: |
+          set -euo pipefail
+          mkdir -p "游戏核心"
+          cat grok-parts/hotfix-ink.part* > "游戏核心/ink.ts"
+          cat grok-parts/hotfix-wc.part* > "游戏核心/WorldCanvas.tsx"
+          cat grok-parts/hotfix-ui.part* > "游戏核心/ui.tsx"
+          wc -c "游戏核心/ink.ts" "游戏核心/WorldCanvas.tsx" "游戏核心/ui.tsx"
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "游戏核心/ink.ts" "游戏核心/WorldCanvas.tsx" "游戏核心/ui.tsx"
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "hotfix: assemble 游戏核心 from grok-parts (2026-09-14)"
+            git push
+          fi
