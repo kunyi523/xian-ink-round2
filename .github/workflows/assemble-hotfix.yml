@@ -3,9 +3,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "grok-parts/hotfix-ink.part*"
-      - "grok-parts/hotfix-wc.part*"
-      - "grok-parts/hotfix-ui.part*"
+      - "grok-parts/*.gz.b64"
       - ".github/workflows/assemble-hotfix.yml"
 permissions:
   contents: write
@@ -14,13 +12,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Concatenate parts into game core
+      - name: Decode gzip+base64 into 游戏核心
         run: |
           set -euo pipefail
           mkdir -p "游戏核心"
-          cat grok-parts/hotfix-ink.part* > "游戏核心/ink.ts"
-          cat grok-parts/hotfix-wc.part* > "游戏核心/WorldCanvas.tsx"
-          cat grok-parts/hotfix-ui.part* > "游戏核心/ui.tsx"
+          python3 << 'PY'
+          import base64, gzip
+          from pathlib import Path
+          mapping = {
+            "grok-parts/ink.ts.gz.b64": "游戏核心/ink.ts",
+            "grok-parts/WorldCanvas.tsx.gz.b64": "游戏核心/WorldCanvas.tsx",
+            "grok-parts/ui.tsx.gz.b64": "游戏核心/ui.tsx",
+          }
+          for src, dest in mapping.items():
+            p = Path(src)
+            if not p.exists():
+              print("skip missing", src)
+              continue
+            raw = gzip.decompress(base64.b64decode(p.read_text().encode("ascii")))
+            Path(dest).write_bytes(raw)
+            print(dest, len(raw))
+          PY
           wc -c "游戏核心/ink.ts" "游戏核心/WorldCanvas.tsx" "游戏核心/ui.tsx"
       - name: Commit if changed
         run: |
@@ -30,6 +42,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes"
           else
-            git commit -m "hotfix: assemble 游戏核心 from grok-parts (2026-09-14)"
+            git commit -m "hotfix: decode 游戏核心 from grok-parts gz.b64 (2026-09-14)"
             git push
           fi
