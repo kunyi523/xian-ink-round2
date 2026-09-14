@@ -1,0 +1,1 @@
+@/workspace/game-opt/仙途点修/游戏核心/ink.ts
